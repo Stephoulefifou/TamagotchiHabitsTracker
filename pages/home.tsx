@@ -1,10 +1,12 @@
-import { View, Text, Button } from "react-native";
+import { View } from "react-native";
+import { useTheme } from "react-native-paper";
 import Tamagotchi from "../components/tamagotchi";
-import { colors } from "../components/colors";
 
-export default function Home({ navigation }: { navigation: any }) {
+export default function Home() {
+  const theme = useTheme();
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: theme.colors.background }}>
       <Tamagotchi />
     </View>
   );

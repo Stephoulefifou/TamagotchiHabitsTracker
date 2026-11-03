@@ -1,6 +1,6 @@
 //Imports
-import { Pressable, Text, View, StyleSheet } from "react-native";
-import { colors } from "./colors";
+import { View, StyleSheet } from "react-native";
+import { Card, Text, useTheme } from "react-native-paper";
 import { daysUntilNext, type Habit, type Recurrence } from "../pages/flatlist/HabitsContext";
 
 // RECURRENCE TEXT
@@ -59,28 +59,37 @@ type Props = {
 };
 
 export default function HabitItem({ habit, onPress }: Props) {
+  const theme = useTheme();
   const dueIn = daysUntilNext(habit.recurrence);
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.6 }]}
-    >
-      {/* Name on the left, "due in" on the right */}
-      <View style={styles.header}>
-        <Text style={styles.name}>{habit.name}</Text>
-        <Text style={[styles.dueIn, dueIn === 0 && styles.dueToday]}>{formatDueIn(dueIn)}</Text>
-      </View>
+    <Card mode="outlined" onPress={onPress} style={[styles.card, { borderColor: theme.colors.secondary }]}>
+      <Card.Content>
+        {/* Name on the left, "due in" on the right */}
+        <View style={styles.header}>
+          <Text variant="titleMedium" style={styles.name}>{habit.name}</Text>
+          <Text
+            variant="labelMedium"
+            style={[
+              styles.dueIn,
+              { color: dueIn === 0 ? theme.colors.primary : theme.colors.secondary },
+              dueIn === 0 && styles.dueToday,
+            ]}
+          >
+            {formatDueIn(dueIn)}
+          </Text>
+        </View>
 
-      {habit.description !== "" && <Text style={styles.text}>{habit.description}</Text>}
+        {habit.description !== "" && <Text variant="bodyMedium">{habit.description}</Text>}
 
-      <Text style={styles.text}>
-        {describeRecurrence(habit.recurrence)}
-        {habit.timesPerDay > 1 ? ` · ${habit.timesPerDay}× a day` : ""}
-      </Text>
+        <Text variant="bodyMedium">
+          {describeRecurrence(habit.recurrence)}
+          {habit.timesPerDay > 1 ? ` · ${habit.timesPerDay}× a day` : ""}
+        </Text>
 
-      <Text style={styles.text}>Strength: {habit.strength}/10</Text>
-    </Pressable>
+        <Text variant="bodyMedium">Strength: {habit.strength}/10</Text>
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -88,11 +97,7 @@ export default function HabitItem({ habit, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 12,
     marginBottom: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.secondary,
   },
   header: {
     flexDirection: "row",
@@ -101,21 +106,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   name: {
-    color: colors.text,
-    fontSize: 16,
     fontWeight: "bold",
     flexShrink: 1, // long names wrap instead of pushing the "due in" text away
   },
   dueIn: {
-    color: colors.secondary,
-    fontSize: 13,
     marginLeft: 8,
   },
   dueToday: {
-    color: colors.primary,
     fontWeight: "bold",
-  },
-  text: {
-    color: colors.text,
   },
 });

@@ -1,9 +1,22 @@
 //Imports
 import { useState } from "react";
-import { Alert, Button, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Appbar,
+  Button,
+  Chip as PaperChip,
+  Dialog,
+  HelperText,
+  IconButton,
+  Portal,
+  SegmentedButtons,
+  Surface,
+  Text,
+  TextInput,
+  useTheme,
+} from "react-native-paper";
+import DateTimePicker, { type DateTimePickerChangeEvent } from "@react-native-community/datetimepicker";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "./colors";
 import { describeRecurrence } from "./habitItem";
 import {
   useHabits,
@@ -83,17 +96,31 @@ function getFrequency(r?: Recurrence): Frequency {
 // SMALL COMPONENTS
 
 // A tappable "pill" button, used for every choice in the form.
+// Small chips (numbers) are fixed-width and skip the check mark so they line up in a grid.
 function Chip({ label, selected, onPress, small }: { label: string; selected: boolean; onPress: () => void; small?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, small && styles.chipSmall, selected && styles.chipSelected]}>
-      <Text style={styles.chipText}>{label}</Text>
-    </Pressable>
+    <PaperChip
+      mode="outlined"
+      selected={selected}
+      showSelectedOverlay
+      showSelectedCheck={!small}
+      compact={small}
+      onPress={onPress}
+      style={small && styles.chipSmall}
+      textStyle={small && styles.chipSmallText}
+    >
+      {label}
+    </PaperChip>
   );
 }
 
 // A title above each part of the form.
 function Label({ children }: { children: string }) {
-  return <Text style={styles.label}>{children}</Text>;
+  return (
+    <Text variant="titleSmall" style={styles.label}>
+      {children}
+    </Text>
+  );
 }
 
 // [ − ]  Every 2 weeks  [ + ]
@@ -106,21 +133,23 @@ function Stepper({ value, onChange, format, min = 1, max = 99 }: {
 }) {
   return (
     <View style={styles.stepper}>
-      <Pressable
+      <IconButton
+        icon="minus"
+        mode="outlined"
+        size={18}
         onPress={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
-        style={[styles.stepButton, value <= min && { opacity: 0.3 }]}
-      >
-        <Text style={styles.stepButtonText}>−</Text>
-      </Pressable>
-      <Text style={styles.stepValue}>{format(value)}</Text>
-      <Pressable
+      />
+      <Text variant="bodyLarge" style={styles.stepValue}>
+        {format(value)}
+      </Text>
+      <IconButton
+        icon="plus"
+        mode="outlined"
+        size={18}
         onPress={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
-        style={[styles.stepButton, value >= max && { opacity: 0.3 }]}
-      >
-        <Text style={styles.stepButtonText}>+</Text>
-      </Pressable>
+      />
     </View>
   );
 }
@@ -136,6 +165,7 @@ type Props = {
 
 export default function HabitForm({ habit, onClose }: Props) {
   const { addHabit, updateHabit, removeHabit } = useHabits();
+  const theme = useTheme();
   const isEditing = habit !== undefined;
   const r = habit?.recurrence; // the saved recurrence, when editing
   const today = new Date();
@@ -175,6 +205,11 @@ export default function HabitForm({ habit, onClose }: Props) {
   const [startDate, setStartDate] = useState<Date>(r ? parseDate(r.startDate) : today);
   const [showCalendar, setShowCalendar] = useState(false);
 
+  // Save was pressed with an empty name -> the field shows an error
+  const [nameError, setNameError] = useState(false);
+  // Delete confirmation dialog
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
   // "Times per day" only makes sense for daily things
   const isDailyLike = frequency === "daily" || frequency === "everyFewDays";
 
@@ -194,9 +229,14 @@ export default function HabitForm({ habit, onClose }: Props) {
   }
 
   // Calendar: Android shows a popup that closes itself, iOS shows it inline
-  function onPickDate(event: DateTimePickerEvent, date?: Date) {
+  function onPickDate(_event: DateTimePickerChangeEvent, date: Date) {
     if (Platform.OS === "android") setShowCalendar(false);
-    if (event.type === "set" && date) setStartDate(date);
+    setStartDate(date);
+  }
+
+  // Android popup closed with "Cancel": just hide it
+  function onCancelDate() {
+    setShowCalendar(false);
   }
 
   // Builds the Recurrence that gets saved, from what the user picked
@@ -231,7 +271,7 @@ export default function HabitForm({ habit, onClose }: Props) {
   // Save: checks the form, then adds or updates
   function save() {
     if (name.trim() === "") {
-      Alert.alert("Missing name", "Give your habit a name.");
+      setNameError(true);
       return;
     }
 
@@ -249,283 +289,306 @@ export default function HabitForm({ habit, onClose }: Props) {
     onClose();
   }
 
-  // Delete (only when editing), with a confirmation
-  function confirmDelete() {
+  // Delete (only when editing), after the confirmation dialog
+  function deleteHabit() {
     if (!habit) return;
-    Alert.alert("Delete this habit?", `"${habit.name}" will be removed.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          removeHabit(habit.id);
-          onClose();
-        },
-      },
-    ]);
+    setConfirmingDelete(false);
+    removeHabit(habit.id);
+    onClose();
   }
 
   return (
-    // A Modal is a separate window, so it needs its own SafeAreaProvider.
+    // A Modal is a separate window, so it needs its own SafeAreaProvider,
+    // and its own Portal.Host so the delete dialog shows above the form.
     <SafeAreaProvider>
-      <SafeAreaView style={styles.screen}>
-        {/* Top bar */}
-        <View style={styles.topBar}>
-          <Text style={styles.title}>{isEditing ? "Edit habit" : "New habit"}</Text>
-          <Button title="Cancel" color={colors.secondary} onPress={onClose} />
-        </View>
+      <Portal.Host>
+        {/* Top bar (handles the top safe area itself) */}
+        <Appbar.Header style={{ backgroundColor: theme.colors.background }}>
+          <Appbar.Action icon="close" onPress={onClose} accessibilityLabel="Cancel" />
+          <Appbar.Content title={isEditing ? "Edit habit" : "New habit"} titleStyle={styles.title} />
+          <Appbar.Action icon="check" onPress={save} accessibilityLabel="Save" />
+        </Appbar.Header>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {/* Name & description */}
-          <Label>Name</Label>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. Water the plants"
-            placeholderTextColor={colors.secondary}
-          />
+        <SafeAreaView edges={["bottom", "left", "right"]} style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Name & description */}
+            <TextInput
+              mode="outlined"
+              label="Name"
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                if (text.trim() !== "") setNameError(false);
+              }}
+              placeholder="e.g. Water the plants"
+              error={nameError}
+            />
+            <HelperText type="error" visible={nameError}>
+              Give your habit a name.
+            </HelperText>
 
-          <Label>Description</Label>
-          <TextInput
-            style={[styles.input, { minHeight: 70 }]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Optional"
-            placeholderTextColor={colors.secondary}
-            multiline
-          />
+            <TextInput
+              mode="outlined"
+              label="Description"
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Optional"
+              multiline
+              style={{ minHeight: 70 }}
+            />
 
-          {/* Repeats */}
-          <Label>Repeats</Label>
-          <View style={styles.row}>
-            {FREQUENCIES.map((option) => (
-              <Chip
-                key={option.value}
-                label={option.label}
-                selected={frequency === option.value}
-                onPress={() => setFrequency(option.value)}
-              />
-            ))}
-          </View>
+            {/* Repeats */}
+            <Label>Repeats</Label>
+            <View style={styles.row}>
+              {FREQUENCIES.map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  selected={frequency === option.value}
+                  onPress={() => setFrequency(option.value)}
+                />
+              ))}
+            </View>
 
-          {/* Every few days: how many days between */}
-          {frequency === "everyFewDays" && (
-            <>
-              <Label>How often?</Label>
-              <Stepper value={dayInterval} onChange={setDayInterval} min={2} format={(n) => `Every ${n} days`} />
-            </>
-          )}
+            {/* Every few days: how many days between */}
+            {frequency === "everyFewDays" && (
+              <>
+                <Label>How often?</Label>
+                <Stepper value={dayInterval} onChange={setDayInterval} min={2} format={(n) => `Every ${n} days`} />
+              </>
+            )}
 
-          {/* Daily things: times per day */}
-          {isDailyLike && (
-            <>
-              <Label>Times per day</Label>
-              <Stepper
-                value={timesPerDay}
-                onChange={setTimesPerDay}
-                max={20}
-                format={(n) => (n === 1 ? "Once" : `${n} times`)}
-              />
-            </>
-          )}
+            {/* Daily things: times per day */}
+            {isDailyLike && (
+              <>
+                <Label>Times per day</Label>
+                <Stepper
+                  value={timesPerDay}
+                  onChange={setTimesPerDay}
+                  max={20}
+                  format={(n) => (n === 1 ? "Once" : `${n} times`)}
+                />
+              </>
+            )}
 
-          {/* Weekly: which days + every how many weeks */}
-          {frequency === "weekly" && (
-            <>
-              <Label>On which days?</Label>
-              <View style={styles.row}>
-                {WEEKDAYS.map((day) => (
-                  <Chip
-                    key={day.value}
-                    label={day.label}
-                    selected={weekDays.includes(day.value)}
-                    onPress={() => toggleWeekDay(day.value)}
-                  />
-                ))}
-              </View>
+            {/* Weekly: which days + every how many weeks */}
+            {frequency === "weekly" && (
+              <>
+                <Label>On which days?</Label>
+                <View style={styles.row}>
+                  {WEEKDAYS.map((day) => (
+                    <Chip
+                      key={day.value}
+                      label={day.label}
+                      selected={weekDays.includes(day.value)}
+                      onPress={() => toggleWeekDay(day.value)}
+                    />
+                  ))}
+                </View>
 
-              <Label>How often?</Label>
-              <Stepper
-                value={weekInterval}
-                onChange={setWeekInterval}
-                format={(n) => (n === 1 ? "Every week" : `Every ${n} weeks`)}
-              />
-            </>
-          )}
+                <Label>How often?</Label>
+                <Stepper
+                  value={weekInterval}
+                  onChange={setWeekInterval}
+                  format={(n) => (n === 1 ? "Every week" : `Every ${n} weeks`)}
+                />
+              </>
+            )}
 
-          {/* Monthly: by weekday (default) or by date */}
-          {frequency === "monthly" && (
-            <>
-              <View style={styles.segmented}>
-                <Pressable
-                  onPress={() => setMonthlyMode("weekday")}
-                  style={[styles.segment, monthlyMode === "weekday" && styles.segmentSelected]}
-                >
-                  <Text style={styles.chipText}>By weekday</Text>
-                  <Text style={styles.hint}>e.g. the 1st Monday</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setMonthlyMode("date")}
-                  style={[styles.segment, monthlyMode === "date" && styles.segmentSelected]}
-                >
-                  <Text style={styles.chipText}>By date</Text>
-                  <Text style={styles.hint}>e.g. the 15th</Text>
-                </Pressable>
-              </View>
+            {/* Monthly: by weekday (default) or by date */}
+            {frequency === "monthly" && (
+              <>
+                <SegmentedButtons
+                  style={styles.segmented}
+                  value={monthlyMode}
+                  onValueChange={(value) => setMonthlyMode(value as MonthlyMode)}
+                  buttons={[
+                    { value: "weekday", label: "By weekday", icon: "calendar-week" },
+                    { value: "date", label: "By date", icon: "calendar-month" },
+                  ]}
+                />
+                <HelperText type="info">
+                  {monthlyMode === "weekday" ? "e.g. the 1st Monday" : "e.g. the 15th"}
+                </HelperText>
 
-              {monthlyMode === "weekday" ? (
-                <>
-                  <Label>On the</Label>
-                  <View style={styles.row}>
-                    {NTH_OPTIONS.map((option) => (
-                      <Chip
-                        key={option.value}
-                        label={option.label}
-                        selected={nth === option.value}
-                        onPress={() => setNth(option.value)}
-                      />
-                    ))}
-                  </View>
-                  <View style={[styles.row, { marginTop: 8 }]}>
-                    {WEEKDAYS.map((day) => (
-                      <Chip
-                        key={day.value}
-                        label={day.label}
-                        selected={nthWeekday === day.value}
-                        onPress={() => setNthWeekday(day.value)}
-                      />
-                    ))}
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Label>On day</Label>
-                  <View style={styles.row}>
-                    {range(31).map((day) => (
-                      <Chip
-                        key={day}
-                        small
-                        label={String(day)}
-                        selected={monthDay === day}
-                        onPress={() => setMonthDay(day)}
-                      />
-                    ))}
-                    <Chip label="Last day" selected={monthDay === "last"} onPress={() => setMonthDay("last")} />
-                  </View>
-                </>
-              )}
+                {monthlyMode === "weekday" ? (
+                  <>
+                    <Label>On the</Label>
+                    <View style={styles.row}>
+                      {NTH_OPTIONS.map((option) => (
+                        <Chip
+                          key={option.value}
+                          label={option.label}
+                          selected={nth === option.value}
+                          onPress={() => setNth(option.value)}
+                        />
+                      ))}
+                    </View>
+                    <View style={[styles.row, { marginTop: 8 }]}>
+                      {WEEKDAYS.map((day) => (
+                        <Chip
+                          key={day.value}
+                          label={day.label}
+                          selected={nthWeekday === day.value}
+                          onPress={() => setNthWeekday(day.value)}
+                        />
+                      ))}
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Label>On day</Label>
+                    <View style={styles.row}>
+                      {range(31).map((day) => (
+                        <Chip
+                          key={day}
+                          small
+                          label={String(day)}
+                          selected={monthDay === day}
+                          onPress={() => setMonthDay(day)}
+                        />
+                      ))}
+                      <Chip label="Last day" selected={monthDay === "last"} onPress={() => setMonthDay("last")} />
+                    </View>
+                  </>
+                )}
 
-              <Label>How often?</Label>
-              <Stepper
-                value={monthInterval}
-                onChange={setMonthInterval}
-                max={12}
-                format={(n) => (n === 1 ? "Every month" : `Every ${n} months`)}
-              />
-            </>
-          )}
+                <Label>How often?</Label>
+                <Stepper
+                  value={monthInterval}
+                  onChange={setMonthInterval}
+                  max={12}
+                  format={(n) => (n === 1 ? "Every month" : `Every ${n} months`)}
+                />
+              </>
+            )}
 
-          {/* Yearly: month + day */}
-          {frequency === "yearly" && (
-            <>
-              <Label>Month</Label>
-              <View style={styles.row}>
-                {MONTHS.map((label, index) => (
-                  <Chip
-                    key={label}
-                    label={label}
-                    selected={yearMonth === index + 1}
-                    onPress={() => changeYearMonth(index + 1)}
-                  />
-                ))}
-              </View>
+            {/* Yearly: month + day */}
+            {frequency === "yearly" && (
+              <>
+                <Label>Month</Label>
+                <View style={styles.row}>
+                  {MONTHS.map((label, index) => (
+                    <Chip
+                      key={label}
+                      label={label}
+                      selected={yearMonth === index + 1}
+                      onPress={() => changeYearMonth(index + 1)}
+                    />
+                  ))}
+                </View>
 
-              <Label>Day</Label>
-              <View style={styles.row}>
-                {range(daysInMonth(yearMonth)).map((day) => (
-                  <Chip
-                    key={day}
-                    small
-                    label={String(day)}
-                    selected={yearDay === day}
-                    onPress={() => setYearDay(day)}
-                  />
-                ))}
-              </View>
-            </>
-          )}
+                <Label>Day</Label>
+                <View style={styles.row}>
+                  {range(daysInMonth(yearMonth)).map((day) => (
+                    <Chip
+                      key={day}
+                      small
+                      label={String(day)}
+                      selected={yearDay === day}
+                      onPress={() => setYearDay(day)}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
 
-          {/* Start date */}
-          <Label>Starts on</Label>
-          <Pressable style={styles.input} onPress={() => setShowCalendar(!showCalendar)}>
-            <Text style={styles.text}>
+            {/* Start date */}
+            <Label>Starts on</Label>
+            <Button
+              mode="outlined"
+              icon="calendar"
+              onPress={() => setShowCalendar(!showCalendar)}
+              style={styles.dateButton}
+              textColor={theme.colors.onSurface}
+            >
               {startDate.toLocaleDateString(undefined, {
                 weekday: "short",
                 day: "numeric",
                 month: "long",
                 year: "numeric",
               })}
-            </Text>
-          </Pressable>
-          {showCalendar && (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              themeVariant="dark"
-              accentColor={colors.primary}
-              onChange={onPickDate}
-            />
-          )}
-
-          {/* Summary: what the user picked, in plain words */}
-          <View style={styles.summary}>
-            <Text style={styles.summaryText}>{summary}</Text>
-          </View>
-
-          {/* Strength */}
-          <Label>Strength (1 = easy, 10 = hard)</Label>
-          <View style={styles.row}>
-            {STRENGTHS.map((value) => (
-              <Chip
-                key={value}
-                small
-                label={String(value)}
-                selected={strength === value}
-                onPress={() => setStrength(value)}
+            </Button>
+            {showCalendar && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                themeVariant="dark"
+                accentColor={theme.colors.primary}
+                onValueChange={onPickDate}
+                onDismiss={onCancelDate}
               />
-            ))}
-          </View>
+            )}
 
-          {/* Actions */}
-          <View style={styles.actions}>
-            <Button title="Save" color={colors.primary} onPress={save} />
-            {isEditing && <Button title="Delete habit" color="#e5484d" onPress={confirmDelete} />}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+            {/* Summary: what the user picked, in plain words */}
+            <Surface elevation={1} style={[styles.summary, { borderLeftColor: theme.colors.primary }]}>
+              <Text variant="titleSmall">{summary}</Text>
+            </Surface>
+
+            {/* Strength */}
+            <Label>Strength (1 = easy, 10 = hard)</Label>
+            <View style={styles.row}>
+              {STRENGTHS.map((value) => (
+                <Chip
+                  key={value}
+                  small
+                  label={String(value)}
+                  selected={strength === value}
+                  onPress={() => setStrength(value)}
+                />
+              ))}
+            </View>
+
+            {/* Actions */}
+            <View style={styles.actions}>
+              <Button mode="contained" icon="content-save" onPress={save}>
+                Save
+              </Button>
+              {isEditing && (
+                <Button
+                  mode="outlined"
+                  icon="delete"
+                  textColor={theme.colors.error}
+                  style={{ borderColor: theme.colors.error }}
+                  onPress={() => setConfirmingDelete(true)}
+                >
+                  Delete habit
+                </Button>
+              )}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+
+        {/* Delete confirmation */}
+        <Portal>
+          <Dialog visible={confirmingDelete} onDismiss={() => setConfirmingDelete(false)}>
+            <Dialog.Icon icon="alert" />
+            <Dialog.Title style={{ textAlign: "center" }}>Delete this habit?</Dialog.Title>
+            <Dialog.Content>
+              <Text variant="bodyMedium">{`"${habit?.name}" will be removed.`}</Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setConfirmingDelete(false)}>Cancel</Button>
+              <Button textColor={theme.colors.error} onPress={deleteHabit}>
+                Delete
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+      </Portal.Host>
     </SafeAreaProvider>
   );
 }
 
 // STYLES
+// Colors come from the Paper theme; these are only layout tweaks.
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
   },
   title: {
-    color: colors.text,
-    fontSize: 20,
     fontWeight: "bold",
   },
   content: {
@@ -533,25 +596,8 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
   label: {
-    color: colors.text,
-    fontWeight: "bold",
     marginTop: 18,
     marginBottom: 8,
-  },
-  text: {
-    color: colors.text,
-  },
-  hint: {
-    color: colors.secondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  input: {
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: 8,
-    padding: 10,
   },
   row: {
     flexDirection: "row",
@@ -559,24 +605,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
-  // Chips
-  chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: "center",
-  },
+  // Number chips line up in a grid
   chipSmall: {
-    width: 40,
-    paddingHorizontal: 0,
+    width: 44,
+    justifyContent: "center",
   },
-  chipSelected: {
-    backgroundColor: colors.primary,
-  },
-  chipText: {
-    color: colors.text,
+  chipSmallText: {
+    marginHorizontal: 0,
+    textAlign: "center",
+    flex: 1,
   },
 
   // Stepper
@@ -584,44 +621,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 12,
-  },
-  stepButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepButtonText: {
-    color: colors.text,
-    fontSize: 20,
   },
   stepValue: {
-    color: colors.text,
-    fontSize: 16,
     minWidth: 120,
     textAlign: "center",
   },
 
-  // Monthly: by weekday / by date
   segmented: {
-    flexDirection: "row",
-    gap: 8,
     marginTop: 18,
   },
-  segment: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: "center",
-  },
-  segmentSelected: {
-    backgroundColor: colors.primary,
+
+  dateButton: {
+    alignSelf: "flex-start",
   },
 
   // Summary
@@ -630,12 +641,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    backgroundColor: colors.nav_background,
-  },
-  summaryText: {
-    color: colors.text,
-    fontWeight: "bold",
   },
 
   actions: {

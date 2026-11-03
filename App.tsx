@@ -1,62 +1,60 @@
-import { NavigationContainer, DarkTheme } from "@react-navigation/native";
+import { NavigationContainer } from "@react-navigation/native";
 import { createNativeBottomTabNavigator } from "@react-navigation/bottom-tabs/unstable";
-import { StyleSheet } from "react-native";
+import { PaperProvider } from "react-native-paper";
 import { HabitsProvider } from "./pages/flatlist/HabitsContext";
-import {
-  SafeAreaView,
-  SafeAreaProvider,
-  SafeAreaInsetsContext,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 
 import habits from "./pages/habits";
 import home from "./pages/home";
 import { colors } from "./components/colors";
+import { theme, navigationTheme } from "./components/theme";
 
 const Tab = createNativeBottomTabNavigator();
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <HabitsProvider>
-        <NavigationContainer theme={DarkTheme}>
-          <Tab.Navigator
-            screenLayout={({ children }) => (
-              <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
-                {children}
-              </SafeAreaView>
-            )}
-            screenOptions={{
-              headerShown: false,
-              tabBarActiveTintColor: colors.primary,
-              tabBarInactiveTintColor: colors.secondary,
-              tabBarStyle: { backgroundColor: colors.nav_background },
-            }}
-          >
-            <Tab.Screen
-              name="Home"
-              component={home}
-              options={{
-                tabBarIcon: {
-                  type: "image",
-                  source: require("./components/icons/creature.png"),
-                },
+      <PaperProvider theme={theme}>
+        <HabitsProvider>
+          <NavigationContainer theme={navigationTheme}>
+            <Tab.Navigator
+              screenLayout={({ children }) => (
+                <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
+                  {children}
+                </SafeAreaView>
+              )}
+              // The native tab bar is not a Paper component, so it gets the colors directly
+              screenOptions={{
+                headerShown: false,
+                tabBarActiveTintColor: theme.colors.primary,
+                tabBarInactiveTintColor: theme.colors.secondary,
+                tabBarStyle: { backgroundColor: colors.nav_background },
               }}
-            />
-            <Tab.Screen
-              name="Habits"
-              component={habits}
-              options={{
-                tabBarIcon: {
-                  type: "image",
-                  source: require("./components/icons/habits.png"),
-                },
-              }}
-            />
-          </Tab.Navigator>
-        </NavigationContainer>
-      </HabitsProvider>
+            >
+              <Tab.Screen
+                name="Home"
+                component={home}
+                options={{
+                  tabBarIcon: {
+                    type: "image",
+                    source: require("./components/icons/creature.png"),
+                  },
+                }}
+              />
+              <Tab.Screen
+                name="Habits"
+                component={habits}
+                options={{
+                  tabBarIcon: {
+                    type: "image",
+                    source: require("./components/icons/habits.png"),
+                  },
+                }}
+              />
+            </Tab.Navigator>
+          </NavigationContainer>
+        </HabitsProvider>
+      </PaperProvider>
     </SafeAreaProvider>
   );
 }
-const styles = StyleSheet.create({});
