@@ -8,6 +8,7 @@ import habits from "./pages/habits";
 import home from "./pages/home";
 import { colors } from "./components/colors";
 import { theme, navigationTheme } from "./components/theme";
+import HabitNotifications from "./pages/flatlist/habitNotifications";
 
 const Tab = createNativeBottomTabNavigator();
 
@@ -16,10 +17,14 @@ export default function App() {
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
         <HabitsProvider>
+          <HabitNotifications />
           <NavigationContainer theme={navigationTheme}>
             <Tab.Navigator
               screenLayout={({ children }) => (
-                <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
+                <SafeAreaView
+                  edges={["top"]}
+                  style={{ flex: 1, backgroundColor: theme.colors.background }}
+                >
                   {children}
                 </SafeAreaView>
               )}

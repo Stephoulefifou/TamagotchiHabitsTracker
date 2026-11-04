@@ -51,6 +51,7 @@ export default function Habits() {
       {/* List */}
       <FlatList
         style={{ marginTop: 16 }}
+        contentContainerStyle={{ paddingBottom: 80 }} // so the last item is not hidden behind the navbar
         data={habits}
         keyExtractor={(habit) => String(habit.id)}
         renderItem={({ item }) => <HabitItem habit={item} onPress={() => openEdit(item)} />}

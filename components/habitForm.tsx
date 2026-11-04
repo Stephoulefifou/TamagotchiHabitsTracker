@@ -15,7 +15,9 @@ import {
   TextInput,
   useTheme,
 } from "react-native-paper";
-import DateTimePicker, { type DateTimePickerChangeEvent } from "@react-native-community/datetimepicker";
+import DateTimePicker, {
+  type DateTimePickerChangeEvent,
+} from "@react-native-community/datetimepicker";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { describeRecurrence } from "./habitItem";
 import {
@@ -63,7 +65,20 @@ const NTH_OPTIONS: { value: Nth; label: string }[] = [
   { value: -1, label: "Last" },
 ];
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 const STRENGTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -97,7 +112,17 @@ function getFrequency(r?: Recurrence): Frequency {
 
 // A tappable "pill" button, used for every choice in the form.
 // Small chips (numbers) are fixed-width and skip the check mark so they line up in a grid.
-function Chip({ label, selected, onPress, small }: { label: string; selected: boolean; onPress: () => void; small?: boolean }) {
+function Chip({
+  label,
+  selected,
+  onPress,
+  small,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  small?: boolean;
+}) {
   return (
     <PaperChip
       mode="outlined"
@@ -124,7 +149,13 @@ function Label({ children }: { children: string }) {
 }
 
 // [ − ]  Every 2 weeks  [ + ]
-function Stepper({ value, onChange, format, min = 1, max = 99 }: {
+function Stepper({
+  value,
+  onChange,
+  format,
+  min = 1,
+  max = 99,
+}: {
   value: number;
   onChange: (value: number) => void;
   format: (value: number) => string;
@@ -159,7 +190,7 @@ function Stepper({ value, onChange, format, min = 1, max = 99 }: {
 // No `habit` -> empty form, Save adds. With `habit` -> pre-filled, Save updates, Delete appears.
 
 type Props = {
-  habit?: Habit;       // the habit to edit (missing = new habit)
+  habit?: Habit; // the habit to edit (missing = new habit)
   onClose: () => void; // called to close the form
 };
 
@@ -180,29 +211,49 @@ export default function HabitForm({ habit, onClose }: Props) {
   const [frequency, setFrequency] = useState<Frequency>(getFrequency(r));
 
   // Every few days
-  const [dayInterval, setDayInterval] = useState(r?.type === "daily" && r.every > 1 ? r.every : 2);
+  const [dayInterval, setDayInterval] = useState(
+    r?.type === "daily" && r.every > 1 ? r.every : 2,
+  );
 
   // Weekly (new habit: today's weekday is pre-selected)
-  const [weekDays, setWeekDays] = useState<Weekday[]>(r?.type === "weekly" ? r.days : [today.getDay() as Weekday]);
-  const [weekInterval, setWeekInterval] = useState(r?.type === "weekly" ? r.every : 1);
+  const [weekDays, setWeekDays] = useState<Weekday[]>(
+    r?.type === "weekly" ? r.days : [today.getDay() as Weekday],
+  );
+  const [weekInterval, setWeekInterval] = useState(
+    r?.type === "weekly" ? r.every : 1,
+  );
 
   // Monthly (by weekday is the default)
-  const [monthlyMode, setMonthlyMode] = useState<MonthlyMode>(r?.type === "monthly" ? "date" : "weekday");
-  const [monthInterval, setMonthInterval] = useState(r?.type === "monthly" || r?.type === "monthlyNth" ? r.every : 1);
+  const [monthlyMode, setMonthlyMode] = useState<MonthlyMode>(
+    r?.type === "monthly" ? "date" : "weekday",
+  );
+  const [monthInterval, setMonthInterval] = useState(
+    r?.type === "monthly" || r?.type === "monthlyNth" ? r.every : 1,
+  );
   const [nth, setNth] = useState<Nth>(() => {
     if (r?.type === "monthlyNth") return r.nth;
     const week = Math.ceil(today.getDate() / 7); // which week of the month today is
     return week > 4 ? -1 : (week as Nth);
   });
-  const [nthWeekday, setNthWeekday] = useState<Weekday>(r?.type === "monthlyNth" ? r.weekday : (today.getDay() as Weekday));
-  const [monthDay, setMonthDay] = useState<number | "last">(r?.type === "monthly" ? r.day : today.getDate());
+  const [nthWeekday, setNthWeekday] = useState<Weekday>(
+    r?.type === "monthlyNth" ? r.weekday : (today.getDay() as Weekday),
+  );
+  const [monthDay, setMonthDay] = useState<number | "last">(
+    r?.type === "monthly" ? r.day : today.getDate(),
+  );
 
   // Yearly (new habit: today's date)
-  const [yearMonth, setYearMonth] = useState(r?.type === "yearly" ? r.month : today.getMonth() + 1);
-  const [yearDay, setYearDay] = useState(r?.type === "yearly" ? r.day : today.getDate());
+  const [yearMonth, setYearMonth] = useState(
+    r?.type === "yearly" ? r.month : today.getMonth() + 1,
+  );
+  const [yearDay, setYearDay] = useState(
+    r?.type === "yearly" ? r.day : today.getDate(),
+  );
 
   // Start date (calendar)
-  const [startDate, setStartDate] = useState<Date>(r ? parseDate(r.startDate) : today);
+  const [startDate, setStartDate] = useState<Date>(
+    r ? parseDate(r.startDate) : today,
+  );
   const [showCalendar, setShowCalendar] = useState(false);
 
   // Save was pressed with an empty name -> the field shows an error
@@ -251,15 +302,36 @@ export default function HabitForm({ habit, onClose }: Props) {
         return { type: "daily", every: dayInterval, startDate: start };
 
       case "weekly":
-        return { type: "weekly", every: weekInterval, days: weekDays, startDate: start };
+        return {
+          type: "weekly",
+          every: weekInterval,
+          days: weekDays,
+          startDate: start,
+        };
 
       case "monthly":
         return monthlyMode === "weekday"
-          ? { type: "monthlyNth", every: monthInterval, nth, weekday: nthWeekday, startDate: start }
-          : { type: "monthly", every: monthInterval, day: monthDay, startDate: start };
+          ? {
+              type: "monthlyNth",
+              every: monthInterval,
+              nth,
+              weekday: nthWeekday,
+              startDate: start,
+            }
+          : {
+              type: "monthly",
+              every: monthInterval,
+              day: monthDay,
+              startDate: start,
+            };
 
       case "yearly":
-        return { type: "yearly", month: yearMonth, day: yearDay, startDate: start };
+        return {
+          type: "yearly",
+          month: yearMonth,
+          day: yearDay,
+          startDate: start,
+        };
     }
   }
 
@@ -304,13 +376,30 @@ export default function HabitForm({ habit, onClose }: Props) {
       <Portal.Host>
         {/* Top bar (handles the top safe area itself) */}
         <Appbar.Header style={{ backgroundColor: theme.colors.background }}>
-          <Appbar.Action icon="close" onPress={onClose} accessibilityLabel="Cancel" />
-          <Appbar.Content title={isEditing ? "Edit habit" : "New habit"} titleStyle={styles.title} />
-          <Appbar.Action icon="check" onPress={save} accessibilityLabel="Save" />
+          <Appbar.Action
+            icon="close"
+            onPress={onClose}
+            accessibilityLabel="Cancel"
+          />
+          <Appbar.Content
+            title={isEditing ? "Edit habit" : "New habit"}
+            titleStyle={styles.title}
+          />
+          <Appbar.Action
+            icon="check"
+            onPress={save}
+            accessibilityLabel="Save"
+          />
         </Appbar.Header>
 
-        <SafeAreaView edges={["bottom", "left", "right"]} style={[styles.screen, { backgroundColor: theme.colors.background }]}>
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <SafeAreaView
+          edges={["bottom", "left", "right"]}
+          style={[styles.screen, { backgroundColor: theme.colors.background }]}
+        >
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Name & description */}
             <TextInput
               mode="outlined"
@@ -354,7 +443,12 @@ export default function HabitForm({ habit, onClose }: Props) {
             {frequency === "everyFewDays" && (
               <>
                 <Label>How often?</Label>
-                <Stepper value={dayInterval} onChange={setDayInterval} min={2} format={(n) => `Every ${n} days`} />
+                <Stepper
+                  value={dayInterval}
+                  onChange={setDayInterval}
+                  min={2}
+                  format={(n) => `Every ${n} days`}
+                />
               </>
             )}
 
@@ -401,14 +495,22 @@ export default function HabitForm({ habit, onClose }: Props) {
                 <SegmentedButtons
                   style={styles.segmented}
                   value={monthlyMode}
-                  onValueChange={(value) => setMonthlyMode(value as MonthlyMode)}
+                  onValueChange={(value) =>
+                    setMonthlyMode(value as MonthlyMode)
+                  }
                   buttons={[
-                    { value: "weekday", label: "By weekday", icon: "calendar-week" },
+                    {
+                      value: "weekday",
+                      label: "By weekday",
+                      icon: "calendar-week",
+                    },
                     { value: "date", label: "By date", icon: "calendar-month" },
                   ]}
                 />
                 <HelperText type="info">
-                  {monthlyMode === "weekday" ? "e.g. the 1st Monday" : "e.g. the 15th"}
+                  {monthlyMode === "weekday"
+                    ? "e.g. the 1st Monday"
+                    : "e.g. the 15th"}
                 </HelperText>
 
                 {monthlyMode === "weekday" ? (
@@ -448,7 +550,11 @@ export default function HabitForm({ habit, onClose }: Props) {
                           onPress={() => setMonthDay(day)}
                         />
                       ))}
-                      <Chip label="Last day" selected={monthDay === "last"} onPress={() => setMonthDay("last")} />
+                      <Chip
+                        label="Last day"
+                        selected={monthDay === "last"}
+                        onPress={() => setMonthDay("last")}
+                      />
                     </View>
                   </>
                 )}
@@ -458,7 +564,9 @@ export default function HabitForm({ habit, onClose }: Props) {
                   value={monthInterval}
                   onChange={setMonthInterval}
                   max={12}
-                  format={(n) => (n === 1 ? "Every month" : `Every ${n} months`)}
+                  format={(n) =>
+                    n === 1 ? "Every month" : `Every ${n} months`
+                  }
                 />
               </>
             )}
@@ -522,7 +630,13 @@ export default function HabitForm({ habit, onClose }: Props) {
             )}
 
             {/* Summary: what the user picked, in plain words */}
-            <Surface elevation={1} style={[styles.summary, { borderLeftColor: theme.colors.primary }]}>
+            <Surface
+              elevation={1}
+              style={[
+                styles.summary,
+                { borderLeftColor: theme.colors.primary },
+              ]}
+            >
               <Text variant="titleSmall">{summary}</Text>
             </Surface>
 
@@ -562,9 +676,14 @@ export default function HabitForm({ habit, onClose }: Props) {
 
         {/* Delete confirmation */}
         <Portal>
-          <Dialog visible={confirmingDelete} onDismiss={() => setConfirmingDelete(false)}>
+          <Dialog
+            visible={confirmingDelete}
+            onDismiss={() => setConfirmingDelete(false)}
+          >
             <Dialog.Icon icon="alert" />
-            <Dialog.Title style={{ textAlign: "center" }}>Delete this habit?</Dialog.Title>
+            <Dialog.Title style={{ textAlign: "center" }}>
+              Delete this habit?
+            </Dialog.Title>
             <Dialog.Content>
               <Text variant="bodyMedium">{`"${habit?.name}" will be removed.`}</Text>
             </Dialog.Content>
