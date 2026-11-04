@@ -1,6 +1,6 @@
 //Imports
 import { useState } from "react";
-import { View, FlatList, Modal } from "react-native";
+import { Alert, View, FlatList, Modal } from "react-native";
 import { Button, Text, useTheme } from "react-native-paper";
 import { useHabits, type Habit } from "./flatlist/HabitsContext";
 import HabitItem from "../components/habitItem";
@@ -10,7 +10,7 @@ import HabitForm from "../components/habitForm";
 // Shows the list, and opens the form to add, edit or delete a habit.
 
 export default function Habits() {
-  const { habits } = useHabits();
+  const { habits, resetAll } = useHabits();
   const theme = useTheme();
 
   // Is the form open?
@@ -34,8 +34,27 @@ export default function Habits() {
     setFormOpen(false);
   }
 
+  // TESTING: clear everything, after a confirmation
+  function confirmReset() {
+    Alert.alert(
+      "Reset everything?",
+      "All habits and completions will be deleted.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear all",
+          style: "destructive",
+          onPress: () => resetAll(false),
+        },
+        { text: "Reset to examples", onPress: () => resetAll(true) },
+      ],
+    );
+  }
+
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
+    <View
+      style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}
+    >
       {/* Header */}
       <Text variant="headlineSmall" style={{ fontWeight: "bold" }}>
         Set up your habits !
@@ -51,14 +70,35 @@ export default function Habits() {
       {/* List */}
       <FlatList
         style={{ marginTop: 16 }}
-        contentContainerStyle={{ paddingBottom: 80 }} // so the last item is not hidden behind the navbar
+        contentContainerStyle={{ paddingBottom: 100 }} // empty space at the end so the last habit can scroll above the navbar
         data={habits}
         keyExtractor={(habit) => String(habit.id)}
-        renderItem={({ item }) => <HabitItem habit={item} onPress={() => openEdit(item)} />}
+        renderItem={({ item }) => (
+          <HabitItem habit={item} onPress={() => openEdit(item)} />
+        )}
         ListEmptyComponent={
-          <Text variant="bodyMedium" style={{ color: theme.colors.secondary, textAlign: "center", marginTop: 32 }}>
+          <Text
+            variant="bodyMedium"
+            style={{
+              color: theme.colors.secondary,
+              textAlign: "center",
+              marginTop: 32,
+            }}
+          >
             No habits yet. Add your first one !
           </Text>
+        }
+        // TESTING: reset button at the end of the list (remove before submitting)
+        ListFooterComponent={
+          <Button
+            mode="outlined"
+            icon="delete-sweep"
+            textColor={theme.colors.error}
+            style={{ marginTop: 24, borderColor: theme.colors.error }}
+            onPress={confirmReset}
+          >
+            Reset everything (testing)
+          </Button>
         }
       />
 

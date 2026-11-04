@@ -59,8 +59,12 @@ async function createChannel() {
 
 // SCHEDULING
 
-// Removes all planned reminders, then plans the ones for the next DAYS_AHEAD days
-export async function scheduleHabitNotifications(habits: Habit[]) {
+// Removes all planned reminders, then plans the ones for the next DAYS_AHEAD days.
+// doneToday(habitId) = how many times the habit was already done today (those reminders are skipped).
+export async function scheduleHabitNotifications(
+  habits: Habit[],
+  doneToday: (habitId: number) => number = () => 0
+) {
   if (!(await askPermission())) return; // the user said no: nothing to do
   await createChannel();
   await Notifications.cancelAllScheduledNotificationsAsync();
@@ -76,6 +80,7 @@ export async function scheduleHabitNotifications(habits: Habit[]) {
       if (!isDueOn(habit.recurrence, date)) continue;
 
       reminderMinutes(habit.timesPerDay).forEach((minutes, index) => {
+        if (day === 0 && index < doneToday(habit.id)) return; // already done today: no reminder
         const when = new Date(date);
         when.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
         if (when > now) reminders.push({ date: when, habit, index }); // skip times already passed
@@ -120,14 +125,16 @@ export async function sendTestNotification() {
 
 // COMPONENT
 // Put it once inside <HabitsProvider>. It shows nothing:
-// it just re-plans the reminders every time the habits change.
+// it just re-plans the reminders every time the habits or the completions change.
 
 export default function HabitNotifications() {
-  const { habits } = useHabits();
+  const { habits, completions, loaded, timesDone } = useHabits();
 
   useEffect(() => {
-    scheduleHabitNotifications(habits);
-  }, [habits]);
+    if (!loaded) return; // wait for the saved habits
+    scheduleHabitNotifications(habits, (habitId) => timesDone(habitId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habits, completions, loaded]);
 
   return null;
 }
