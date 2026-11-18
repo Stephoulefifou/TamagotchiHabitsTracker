@@ -4,6 +4,7 @@ import { PaperProvider } from "react-native-paper";
 import { HabitsProvider } from "./pages/flatlist/HabitsContext";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import AppleCounter from "./components/appleCounter";
+import BurgerMenu from "./components/burgermenu";
 
 import habits from "./pages/habits";
 import home from "./pages/home";
@@ -61,6 +62,7 @@ export default function App() {
             </Tab.Navigator>
           </NavigationContainer>
           <AppleCounter />
+          <BurgerMenu />
         </HabitsProvider>
       </PaperProvider>
     </SafeAreaProvider>
