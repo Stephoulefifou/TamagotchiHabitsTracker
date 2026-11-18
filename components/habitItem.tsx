@@ -153,6 +153,7 @@ export default function HabitItem({ habit, onPress }: Props) {
             >
               {habit.name}
             </Text>
+
             <Text
               variant="labelMedium"
               style={[
@@ -167,19 +168,28 @@ export default function HabitItem({ habit, onPress }: Props) {
               {formatDueIn(dueIn)}
             </Text>
           </View>
+          {/* Description on the left, number of apple gained on the right */}
+          <View style={styles.header}>
+            {habit.description !== "" && (
+              <Text variant="bodyMedium">{habit.description}</Text>
+            )}
 
-          {habit.description !== "" && (
-            <Text variant="bodyMedium">{habit.description}</Text>
-          )}
-
-          <Text variant="bodyMedium">
+            <Text variant="bodyLarge"
+              style={[
+                styles.dueIn,
+                {
+                  color:
+                    dueIn === 0 ? theme.colors.onPrimary : theme.colors.secondary,
+                },
+                dueIn === 0 && styles.dueToday,
+              ]}> For {habit.strength} apples</Text>
+          </View>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
             {describeRecurrence(habit.recurrence)}
             {habit.timesPerDay > 1 ? ` · ${habit.timesPerDay}× a day` : ""}
           </Text>
-
-          <Text variant="bodyMedium">Strength: {habit.strength}/10</Text>
         </View>
-
+        
         {/* Right: check button, only on days the habit is due */}
         {dueToday && (
           <View style={styles.check}>
