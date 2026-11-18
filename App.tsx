@@ -3,6 +3,7 @@ import { createNativeBottomTabNavigator } from "@react-navigation/bottom-tabs/un
 import { PaperProvider } from "react-native-paper";
 import { HabitsProvider } from "./pages/flatlist/HabitsContext";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import AppleCounter from "./components/appleCounter";
 
 import habits from "./pages/habits";
 import home from "./pages/home";
@@ -19,6 +20,7 @@ export default function App() {
         <HabitsProvider>
           <HabitNotifications />
           <NavigationContainer theme={navigationTheme}>
+            
             <Tab.Navigator
               screenLayout={({ children }) => (
                 <SafeAreaView
@@ -58,6 +60,7 @@ export default function App() {
               />
             </Tab.Navigator>
           </NavigationContainer>
+          <AppleCounter />
         </HabitsProvider>
       </PaperProvider>
     </SafeAreaProvider>

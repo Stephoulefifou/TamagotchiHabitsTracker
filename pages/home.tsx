@@ -42,7 +42,7 @@ export default function Home() {
       }}
     >
       <Tamagotchi />
-      <Text>{apples}</Text>
+      <Text style={{ color: theme.colors.onPrimary }}>{apples}</Text>
       {/* White square behind the animation */}
       <View style={{ backgroundColor: "white", padding: 12, borderRadius: 16 }}>
         {/* Plays the 4 frames once, then rests on the first frame */}
