@@ -6,10 +6,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PLACEHOLDER_HABITS } from "./placeholderHabits"; // TODO: remove before submitting
+// Firebase
+import { database } from "../../firebaseConfig.js";
+import { ref, get, set } from "firebase/database";
 
-// TYPES
 
 // Day of the week
 export type Weekday =
@@ -205,7 +206,7 @@ type HabitsContextType = {
   habits: Habit[];
   completions: Completions;
   apples: number; // number of apples earned by completing habits
-  spendApples: (amount: number) => boolean; 
+  spendApples: (amount: number) => boolean;
   loaded: boolean; // false while the saved data is being read at startup
   addHabit: (habit: NewHabit) => void;
   updateHabit: (id: number, changes: Partial<NewHabit>) => void;
@@ -221,11 +222,11 @@ const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
 
 // SAVING
 // Everything is saved on the phone under this key (habits + completions together).
-const STORAGE_KEY = "tamagotchi-habits-data";
+
 
 // 5. PROVIDER
 
-export function HabitsProvider({ children }: { children: ReactNode }) {
+export function HabitsProvider({ uid, children }: { uid: string; children: ReactNode }) {
   // The list of all habits.
   const [habits, setHabits] = useState<Habit[]>([]);
   // Which habits were done, and when.
@@ -234,33 +235,32 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   // Counter for apples
   const [apples, setApples] = useState(100);
-
+const dataPath = `users/${uid}`;
+  // Load the saved data once, when the app starts
   // Load the saved data once, when the app starts
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((json) => {
-        if (json) {
-          const saved = JSON.parse(json);
+    get(ref(database, dataPath))
+      .then((snapshot) => {
+        if (snapshot.exists()) {
+          const saved = snapshot.val();
           setHabits(saved.habits ?? []);
           setCompletions(saved.completions ?? {});
           setApples(saved.apples ?? 100);
         } else {
           setHabits(PLACEHOLDER_HABITS); // TODO: first launch with nothing saved -> [] before submitting
         }
+        setLoaded(true); // only when loading worked
       })
-      .catch((error) => console.warn("Could not load the saved habits", error))
-      .finally(() => setLoaded(true));
-  }, []);
+      .catch((error) => console.warn("Could not load the saved habits", error));
+  }, [dataPath]);
 
-  // Save every time the habits or the completions change
+  // Save every time the habits, the completions or the apples change
   useEffect(() => {
     if (!loaded) return; // not loaded yet: saving now would erase the saved data
-    AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ habits, completions, apples }),
-    ).catch((error) => console.warn("Could not save the habits", error));
-  }, [habits, completions, loaded, apples]);
-
+    set(ref(database, dataPath), { habits, completions, apples }).catch(
+      (error) => console.warn("Could not save the habits", error),
+    );
+  }, [habits, completions, loaded, apples, dataPath]);
   // Adds a new habit to the end of the list.
   function addHabit(habit: NewHabit) {
     setHabits((previous) => [
@@ -333,7 +333,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       setApples((current) => Math.max(0, current - habit.strength)); // Takes the apples back if the day had been completed.
     }
   }
-// let us spend apples when we give an apple to the tamagotchi. Returns true if there were enough apples, false if not.
+  // let us spend apples when we give an apple to the tamagotchi. Returns true if there were enough apples, false if not.
   function spendApples(amount: number): boolean {
     if (apples < amount) return false; // not enough: nothing happens
     setApples((current) => current - amount);

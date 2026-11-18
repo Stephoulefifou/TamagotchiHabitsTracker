@@ -5,6 +5,12 @@ import { IconButton, Menu, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AboutPage from "./aboutPage";
 
+//logout
+import { Alert } from "react-native";
+import { signOut } from "firebase/auth";
+import * as Notifications from "expo-notifications";
+import { auth } from "../firebaseConfig";
+
 // BURGER MENU
 // A button in the top left of every screen. It opens a small menu.
 // To add a page later: add a Menu.Item, and a Modal like the About one.
@@ -23,23 +29,46 @@ export default function BurgerMenu() {
     setMenuOpen(false);
     setAboutOpen(true);
   }
+  // Log out, after a confirmation
+  function logOut() {
+    setMenuOpen(false);
+    Alert.alert("Log out?", "You can log in again any time.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log out",
+        style: "destructive",
+        onPress: async () => {
+          await Notifications.cancelAllScheduledNotificationsAsync(); // no more reminders for this user
+          await signOut(auth);
+        },
+      },
+    ]);
+  }
 
   return (
     <>
       <View style={[styles.button, { top: insets.top }]}>
         <Menu
+          key={String(menuOpen)}
           visible={menuOpen}
           onDismiss={() => setMenuOpen(false)} // tap outside -> close
           anchor={
             <IconButton
               icon="menu"
               mode="contained-tonal"
-              onPress={() => setMenuOpen(true)}
+              onPress={() => {
+                setMenuOpen(true);
+              }}
               accessibilityLabel="Open menu"
             />
           }
         >
-          <Menu.Item leadingIcon="information-outline" title="About" onPress={openAbout} />
+          <Menu.Item
+            leadingIcon="information-outline"
+            title="About"
+            onPress={openAbout}
+          />
+          <Menu.Item leadingIcon="logout" title="Log out" onPress={logOut} />
         </Menu>
       </View>
 
