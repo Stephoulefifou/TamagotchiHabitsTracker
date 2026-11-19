@@ -16,6 +16,7 @@ import {
   type Fullness,
 } from "../../components/fullness";
 import type { SlimeColor } from "../../components/animation/frames";
+import { CATEGORIES, findItem } from "../../components/shop/shopitems";
 
 // The pet. null = not born yet (the egg is shown)
 export type Pet = {
@@ -218,6 +219,10 @@ type HabitsContextType = {
   habits: Habit[];
   completions: Completions;
   pet: Pet | null;
+  owned: string[];
+  equipped: string[];
+  buyItem: (id: string) => boolean;
+  toggleEquip: (id: string) => void;
   hatchPet: (name: string, color: SlimeColor) => void;
   resetAccount: () => void; // TESTING
   apples: number; // number of apples earned by completing habits
@@ -264,7 +269,13 @@ export function HabitsProvider({
   }));
   // The pet, or null when the egg has not hatched yet
   const [pet, setPet] = useState<Pet | null>(null);
+
+  // Shop: the ids of the items bought, and of the items in use
+  const [owned, setOwned] = useState<string[]>([]);
+  const [equipped, setEquipped] = useState<string[]>([]);
+
   const dataPath = `users/${uid}`;
+
   // Load the saved data once, when the app starts
   // Load the saved data once, when the app starts
   useEffect(() => {
@@ -275,6 +286,8 @@ export function HabitsProvider({
           setFullness(saved.fullness ?? { value: 0, updatedAt: Date.now() });
           setPet(saved.pet ?? null);
           setHabits(saved.habits ?? []);
+          setOwned(saved.owned ?? []);
+          setEquipped(saved.equipped ?? []);
           setCompletions(saved.completions ?? {});
           setApples(saved.apples ?? 100);
         } else {
@@ -294,8 +307,20 @@ export function HabitsProvider({
       fullness,
       pet,
       apples,
+      owned,
+      equipped,
     }).catch((error) => console.warn("Could not save the habits", error));
-  }, [habits, completions, loaded, apples, dataPath, fullness, pet]);
+  }, [
+    habits,
+    completions,
+    loaded,
+    apples,
+    dataPath,
+    owned,
+    equipped,
+    fullness,
+    pet,
+  ]);
   // Adds a new habit to the end of the list.
   function addHabit(habit: NewHabit) {
     setHabits((previous) => [
@@ -384,6 +409,33 @@ export function HabitsProvider({
     setFullness({ value: current + 1, updatedAt: now });
     return true;
   }
+
+  // Buys an item with apples, and equips it right away. Returns false if not possible.
+  function buyItem(id: string): boolean {
+    const item = findItem(id);
+    if (!item || owned.includes(id)) return false; // unknown, or already bought
+    if (!spendApples(item.price)) return false; // not enough apples
+    setOwned((current) => [...current, id]);
+    toggleEquip(id);
+    return true;
+  }
+
+  // Equips an item, or takes it off if it is already equipped.
+  // For "only one" categories (beanbag, house), it replaces the other one.
+  function toggleEquip(id: string) {
+    const item = findItem(id);
+    if (!item) return;
+    const onlyOne = CATEGORIES.find((c) => c.id === item.category)?.onlyOne;
+
+    setEquipped((current) => {
+      if (current.includes(id)) return current.filter((e) => e !== id); // take it off
+      const kept = onlyOne
+        ? current.filter((e) => findItem(e)?.category !== item.category) // remove the old one
+        : current;
+      return [...kept, id];
+    });
+  }
+
   // The egg hatched: the pet is born
   function hatchPet(name: string, color: SlimeColor) {
     setPet({ name, color, bornAt: Date.now() });
@@ -396,6 +448,8 @@ export function HabitsProvider({
     setApples(100);
     setFullness({ value: 0, updatedAt: Date.now() });
     setPet(null);
+    setOwned([]);
+    setEquipped([]);
   }
 
   // TESTING: deletes all habits and completions (the save effect then saves the empty state).
@@ -423,6 +477,10 @@ export function HabitsProvider({
         timesDone,
         markDone,
         resetDone,
+        owned,
+        equipped,
+        buyItem,
+        toggleEquip,
         resetAll,
       }}
     >

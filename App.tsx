@@ -17,6 +17,7 @@ import habits from "./pages/habits";
 import home from "./pages/home";
 import { colors } from "./components/colors";
 import { theme, navigationTheme } from "./components/theme";
+import shop from "./pages/shop";
 
 const Tab = createNativeBottomTabNavigator();
 
@@ -50,7 +51,10 @@ export default function App() {
                 screenLayout={({ children }) => (
                   <SafeAreaView
                     edges={["top"]}
-                    style={{ flex: 1, backgroundColor: theme.colors.background }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: theme.colors.background,
+                    }}
                   >
                     {children}
                   </SafeAreaView>
@@ -80,6 +84,16 @@ export default function App() {
                     tabBarIcon: {
                       type: "image",
                       source: require("./components/icons/habits.png"),
+                    },
+                  }}
+                />
+                <Tab.Screen
+                  name="Shop"
+                  component={shop}
+                  options={{
+                    tabBarIcon: {
+                      type: "image",
+                      source: require("./components/icons/habits.png"), // TODO: shop icon
                     },
                   }}
                 />
