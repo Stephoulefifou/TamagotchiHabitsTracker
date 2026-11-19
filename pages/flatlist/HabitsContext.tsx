@@ -10,7 +10,11 @@ import { PLACEHOLDER_HABITS } from "./placeholderHabits"; // TODO: remove before
 // Firebase
 import { database } from "../../firebaseConfig.js";
 import { ref, get, set } from "firebase/database";
-
+import {
+  currentFullness,
+  MAX_FULLNESS,
+  type Fullness,
+} from "../../components/fullness";
 
 // Day of the week
 export type Weekday =
@@ -206,6 +210,8 @@ type HabitsContextType = {
   habits: Habit[];
   completions: Completions;
   apples: number; // number of apples earned by completing habits
+  fullness: Fullness;
+  feedPet: () => boolean;
   spendApples: (amount: number) => boolean;
   loaded: boolean; // false while the saved data is being read at startup
   addHabit: (habit: NewHabit) => void;
@@ -223,10 +229,15 @@ const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
 // SAVING
 // Everything is saved on the phone under this key (habits + completions together).
 
-
 // 5. PROVIDER
 
-export function HabitsProvider({ uid, children }: { uid: string; children: ReactNode }) {
+export function HabitsProvider({
+  uid,
+  children,
+}: {
+  uid: string;
+  children: ReactNode;
+}) {
   // The list of all habits.
   const [habits, setHabits] = useState<Habit[]>([]);
   // Which habits were done, and when.
@@ -235,7 +246,12 @@ export function HabitsProvider({ uid, children }: { uid: string; children: React
   const [loaded, setLoaded] = useState(false);
   // Counter for apples
   const [apples, setApples] = useState(100);
-const dataPath = `users/${uid}`;
+  // How full the pet is (a new user starts at 0, now)
+  const [fullness, setFullness] = useState<Fullness>(() => ({
+    value: 0,
+    updatedAt: Date.now(),
+  }));
+  const dataPath = `users/${uid}`;
   // Load the saved data once, when the app starts
   // Load the saved data once, when the app starts
   useEffect(() => {
@@ -243,6 +259,7 @@ const dataPath = `users/${uid}`;
       .then((snapshot) => {
         if (snapshot.exists()) {
           const saved = snapshot.val();
+          setFullness(saved.fullness ?? { value: 0, updatedAt: Date.now() });
           setHabits(saved.habits ?? []);
           setCompletions(saved.completions ?? {});
           setApples(saved.apples ?? 100);
@@ -257,10 +274,13 @@ const dataPath = `users/${uid}`;
   // Save every time the habits, the completions or the apples change
   useEffect(() => {
     if (!loaded) return; // not loaded yet: saving now would erase the saved data
-    set(ref(database, dataPath), { habits, completions, apples }).catch(
-      (error) => console.warn("Could not save the habits", error),
-    );
-  }, [habits, completions, loaded, apples, dataPath]);
+    set(ref(database, dataPath), {
+      habits,
+      completions,
+      fullness,
+      apples,
+    }).catch((error) => console.warn("Could not save the habits", error));
+  }, [habits, completions, loaded, apples, dataPath, fullness]);
   // Adds a new habit to the end of the list.
   function addHabit(habit: NewHabit) {
     setHabits((previous) => [
@@ -340,6 +360,16 @@ const dataPath = `users/${uid}`;
     return true;
   }
 
+  // Feeds the pet: costs 1 apple, adds 1 fullness. Returns false if full or no apple.
+  function feedPet(): boolean {
+    const now = Date.now();
+    const current = currentFullness(fullness, now);
+    if (current >= MAX_FULLNESS) return false; // already full
+    if (!spendApples(1)) return false; // no apple
+    setFullness({ value: current + 1, updatedAt: now });
+    return true;
+  }
+
   // TESTING: deletes all habits and completions (the save effect then saves the empty state).
   function resetAll(withExamples: boolean = false) {
     setHabits(withExamples ? PLACEHOLDER_HABITS : []);
@@ -352,6 +382,8 @@ const dataPath = `users/${uid}`;
         habits,
         completions,
         apples,
+        fullness,
+        feedPet,
         spendApples,
         loaded,
         addHabit,
