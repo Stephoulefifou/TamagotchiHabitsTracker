@@ -15,6 +15,14 @@ import {
   MAX_FULLNESS,
   type Fullness,
 } from "../../components/fullness";
+import type { SlimeColor } from "../../components/animation/frames";
+
+// The pet. null = not born yet (the egg is shown)
+export type Pet = {
+  name: string; // from the Random User API
+  color: SlimeColor; // random, at hatching
+  bornAt: number; // when it hatched (Date.now())
+};
 
 // Day of the week
 export type Weekday =
@@ -209,6 +217,9 @@ export function daysUntilNext(
 type HabitsContextType = {
   habits: Habit[];
   completions: Completions;
+  pet: Pet | null;
+  hatchPet: (name: string, color: SlimeColor) => void;
+  resetAccount: () => void; // TESTING
   apples: number; // number of apples earned by completing habits
   fullness: Fullness;
   feedPet: () => boolean;
@@ -251,6 +262,8 @@ export function HabitsProvider({
     value: 0,
     updatedAt: Date.now(),
   }));
+  // The pet, or null when the egg has not hatched yet
+  const [pet, setPet] = useState<Pet | null>(null);
   const dataPath = `users/${uid}`;
   // Load the saved data once, when the app starts
   // Load the saved data once, when the app starts
@@ -260,6 +273,7 @@ export function HabitsProvider({
         if (snapshot.exists()) {
           const saved = snapshot.val();
           setFullness(saved.fullness ?? { value: 0, updatedAt: Date.now() });
+          setPet(saved.pet ?? null);
           setHabits(saved.habits ?? []);
           setCompletions(saved.completions ?? {});
           setApples(saved.apples ?? 100);
@@ -278,9 +292,10 @@ export function HabitsProvider({
       habits,
       completions,
       fullness,
+      pet,
       apples,
     }).catch((error) => console.warn("Could not save the habits", error));
-  }, [habits, completions, loaded, apples, dataPath, fullness]);
+  }, [habits, completions, loaded, apples, dataPath, fullness, pet]);
   // Adds a new habit to the end of the list.
   function addHabit(habit: NewHabit) {
     setHabits((previous) => [
@@ -369,6 +384,19 @@ export function HabitsProvider({
     setFullness({ value: current + 1, updatedAt: now });
     return true;
   }
+  // The egg hatched: the pet is born
+  function hatchPet(name: string, color: SlimeColor) {
+    setPet({ name, color, bornAt: Date.now() });
+  }
+
+  // TESTING: back to a brand new account (the egg comes back)
+  function resetAccount() {
+    setHabits(PLACEHOLDER_HABITS); // TODO: [] before submitting
+    setCompletions({});
+    setApples(100);
+    setFullness({ value: 0, updatedAt: Date.now() });
+    setPet(null);
+  }
 
   // TESTING: deletes all habits and completions (the save effect then saves the empty state).
   function resetAll(withExamples: boolean = false) {
@@ -384,6 +412,9 @@ export function HabitsProvider({
         apples,
         fullness,
         feedPet,
+        pet,
+        hatchPet,
+        resetAccount,
         spendApples,
         loaded,
         addHabit,

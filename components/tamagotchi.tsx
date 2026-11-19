@@ -6,7 +6,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import SpriteAnimation from "./animation/spriteAnimation";
 import {
   FRAMES,
-  COLORS,
   type AnimationName,
   type SlimeColor,
 } from "./animation/frames";
@@ -62,8 +61,10 @@ function duration(animation: AnimationName, repeats: number): number {
 //   eat:   once, when you give an apple. Then the pet is awake.
 
 type Mode = "sleep" | "awake" | "eat";
-
-export default function Tamagotchi() {
+type Props = {
+  color: SlimeColor; // the pet's color, chosen at hatching
+};
+export default function Tamagotchi({ color }: Props) {
   const { apples, fullness, feedPet } = useHabits();
 
   // The time now, updated every minute (so the body size changes by itself)
@@ -80,8 +81,6 @@ export default function Tamagotchi() {
   const [mode, setMode] = useState<Mode>("sleep");
   // The current idle animation (when awake)
   const [idle, setIdle] = useState<Idle>(() => pickIdle());
-  // TESTING: the slime's color
-  const [color, setColor] = useState<SlimeColor>("purple");
   // Goes up at every touch on the screen (restarts the "fall asleep" countdown)
   const [touches, setTouches] = useState(0);
 
@@ -115,13 +114,6 @@ export default function Tamagotchi() {
     if (feedPet()) {
       setMode("eat");
     }
-  }
-
-  // TESTING: next color in the list
-  function nextColor() {
-    setColor(
-      (current) => COLORS[(COLORS.indexOf(current) + 1) % COLORS.length],
-    );
   }
 
   // Which animation to show, depending on the mode
@@ -158,11 +150,6 @@ export default function Tamagotchi() {
         disabled={mode === "eat" || apples === 0 || full}
       >
         {full ? "I'm full!" : "Give an apple"}
-      </Button>
-
-      {/* TESTING: try every color (remove before submitting) */}
-      <Button mode="outlined" icon="palette" onPress={nextColor}>
-        Color: {color}
       </Button>
     </View>
   );
